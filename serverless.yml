@@ -1,0 +1,59 @@
+service: url-shortener
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: dev
+  
+  environment: 
+    URL_TABLE_NAME: ${self:service}-${self:provider.stage}-Urls
+
+  # IAM Role: Grants necessary permissions to both Lambdas
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+          Resource:
+            Fn::GetAtt:
+              - UrlsTable
+              - Arn
+
+functions:
+# Contains the write/shorten endpoint
+  shortenUrl:
+    handler: handlers/shortenUrl.handler
+    description: Generates a short code and writes URL mapping to DynamoDB.
+    events:
+      - http:
+          path: shorten
+          method: post
+          cors: true
+# Contains the read/redirect endpoint
+  redirectUrl:
+    handler: handlers/redirectUrl.handler
+    description: Looks up short code and performs a 302 redirect.
+    events:
+      - http:
+          path: /{shortCode}
+          method: get
+          cors: true
+
+resources: 
+  Resources:
+    # DynamoDB Table Definition
+    UrlsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-Urls
+        AttributeDefinitions:
+          - AttributeName: shortCode
+            AttributeType: S
+        KeySchema:
+          - AttributeName: shortCode
+            KeyType: HASH
+        # Set capacity units based on expected traffic.
+        BillingMode: PAY_PER_REQUEST 
