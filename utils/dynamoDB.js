@@ -1,7 +1,5 @@
-// lib/dynamoDB.js
-
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 // Initialize clients outside the function handler for connection reuse (best practice)
 const client = new DynamoDBClient({});
@@ -29,7 +27,7 @@ async function putItem(shortCode, originalUrl) {
         // does not yet exist.
         ConditionExpression: "attribute_not_exists(shortCode)", 
     });
-    // This is synchronous: the handler waits for this promise to resolve
+    // This is "synchronous": the handler waits for this promise to resolve
     await docClient.send(command);
 }
 
@@ -49,7 +47,32 @@ async function getItem(shortCode) {
     return response.Item ? response.Item.originalUrl : null;
 }
 
+/**
+ * Updates the click count for a given short code.
+ * @param {string} shortCode
+ * @returns {Promise<void>}
+ */
+async function incrementClickCount(shortCode) {
+    const command = new UpdateCommand({
+        TableName, 
+        Key: { shortCode },
+        ExpressionAttributeNames: {
+            '#cc': 'click_count'
+        },
+        ExpressionAttributeValues: {
+            ':inc': 1
+        },
+        UpdateExpression: 'ADD #cc :inc',
+    });
+    // Don't await this, for faster redirects
+    await docClient.send(command).catch(err => {
+        console.error('Failed to update click count:', err);
+    });
+}
+
+
 module.exports = {
     putItem,
     getItem,
+    incrementClickCount,
 };

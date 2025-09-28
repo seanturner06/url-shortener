@@ -17,6 +17,7 @@ provider:
           Action:
             - dynamodb:GetItem
             - dynamodb:PutItem
+            - dynamodb:UpdateItem
           Resource:
             Fn::GetAtt:
               - UrlsTable
