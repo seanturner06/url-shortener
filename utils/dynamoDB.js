@@ -5,6 +5,8 @@ const { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } = requir
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
+console.log('DynamoDB Client initialized');
+
 const TableName = process.env.URL_TABLE_NAME;
 
 /**
@@ -69,7 +71,6 @@ async function incrementClickCount(shortCode) {
         console.error('Failed to update click count:', err);
     });
 }
-
 
 module.exports = {
     putItem,

@@ -5,9 +5,17 @@ provider:
   runtime: nodejs18.x
   region: us-east-1
   stage: dev
+  vpc: 
+    securityGroupIds:
+      - sg-0725ed44127389d51
+    subnetIds:
+      - subnet-00dd7f88521816d10
+      - subnet-0e38cc3b1283450cb
+
   
   environment: 
     URL_TABLE_NAME: ${self:service}-${self:provider.stage}-Urls
+    REDIS_ENDPOINT_NAME: dev/url/cachelocation
 
   # IAM Role: Grants necessary permissions to both Lambdas
   iam:
@@ -17,11 +25,17 @@ provider:
           Action:
             - dynamodb:GetItem
             - dynamodb:PutItem
-            - dynamodb:UpdateItem
+            - dynamodb:UpdateItem 
           Resource:
             Fn::GetAtt:
               - UrlsTable
               - Arn
+        - Effect: "Allow"
+          Action: 
+            - secretsmanager:GetSecretValue
+          Resource:
+            - arn:aws:secretsmanager:us-east-1:371849554440:secret:dev/url/cachelocation-ErZwZv
+            
 
 functions:
 # Contains the write/shorten endpoint
@@ -57,4 +71,4 @@ resources:
           - AttributeName: shortCode
             KeyType: HASH
         # Set capacity units based on expected traffic.
-        BillingMode: PAY_PER_REQUEST 
+        BillingMode: PAY_PER_REQUEST

@@ -1,6 +1,8 @@
 const { getItem, incrementClickCount } = require('../utils/dynamoDB');
+const { getRedisClient } = require('../utils/redisClient.js');
 
-exports.handler = async (event) => {
+exports.handler = async (event) => { 
+
     // 1. Get Short Code from Path
     const shortCode = event.pathParameters ? event.pathParameters.shortCode : null;
 
@@ -8,30 +10,58 @@ exports.handler = async (event) => {
         return { statusCode: 400, body: 'Missing short code.' };
     }
 
-    try {
-        // SYNCHRONOUS READ: Handler waits here for DynamoDB lookup
-        const originalUrl = await getItem(shortCode);
+    // 0. Initialize Redis Client
+    const redisClient = await getRedisClient();
 
-        if (originalUrl) {
-            // 1. Increment Click Count (fire-and-forget, no need to await)
+    // See if we have a cached URL
+    try {
+        const cachedUrl = await redisClient.get(shortCode);
+
+        // Cache Hit
+        if(cachedUrl) {
+            // Increment Click Count (fire-and-forget)
             incrementClickCount(shortCode).catch(err =>{
                 console.error('Failed to increment click count:', err);
             });
-            // 2. Perform Redirect
+
+            // Return Redirect Response
             return {
-                statusCode: 302, // The critical HTTP Redirect code
+                statusCode: 302,
                 headers: {
-                    'Location': originalUrl, // Tells the browser where to go
-                    'Cache-Control': 'max-age=3600, public' // Cache the redirect for fast re-visits
+                    'Location': cachedUrl,
+                    'Cache-Control': 'max-age=3600, public'
                 },
-                body: 'Redirecting...' // Body is optional for a 302 redirect
+                body: 'Redirecting...'
             };
-        } else {
-            // 3. Not Found
-            return { statusCode: 404, body: 'URL not found.' };
         }
-    } catch (error) {
-        console.error('Redirect Handler Error:', error);
-        return { statusCode: 500, body: 'Internal server error during redirect.' };
+        // Cache Miss: Fetch from DynamoDB
+        const originalUrl = await getItem(shortCode);
+
+        if (!originalUrl) {
+            return { statusCode: 404, body: 'Short code not found.' };
+        } 
+
+        // Store in Redis Cache (fire-and-forget)
+        redisClient.set(shortCode, originalUrl, 'EX', 3600).catch(err => {
+            console.error('Failed to cache URL in Redis:', err);
+        });
+
+        // Increment Click Count (fire-and-forget)
+        incrementClickCount(shortCode).catch(err =>{
+            console.error('Failed to increment click count:', err);
+        });
+
+        // Return Redirect Response
+        return {
+            statusCode: 302,
+            headers: {
+                'Location': originalUrl,
+                'Cache-Control': 'max-age=3600, public'
+            },
+            body: 'Redirecting...'
+        };
+    }catch(err) {
+        console.error('Redis Cache Error:', err);
+        return { statusCode: 500, body: 'Internal Server Error' };
     }
 };

@@ -12,6 +12,8 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.896.0",
     "@aws-sdk/lib-dynamodb": "^3.896.0",
+    "@valkey/valkey-glide": "^2.1.0",
+    "ioredis": "^5.8.0",
     "nanoid": "^5.1.6"
   },
   "devDependencies": {
