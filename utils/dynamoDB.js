@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCommand} = require('@aws-sdk/lib-dynamodb');
 
 // Initialize clients outside the function handler for connection reuse (best practice)
 const client = new DynamoDBClient({});
@@ -72,8 +72,24 @@ async function incrementClickCount(shortCode) {
     });
 }
 
+/**
+ * Removes an item from DynamoDB based on the short code.
+ * @param {string} shortCode
+ * @returns {Promise<void>}
+ */
+async function deleteItem(shortCode) {
+    const command = new DeleteCommand({
+        TableName,
+        Key: { shortCode }
+    });
+    await docClient.send(command).catch(err => {
+        console.error('Failed to delete item:', err);
+    });
+}
+
 module.exports = {
     putItem,
     getItem,
+    deleteItem,
     incrementClickCount,
 };
