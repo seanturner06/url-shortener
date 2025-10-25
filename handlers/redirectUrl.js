@@ -39,6 +39,17 @@ exports.handler = async (event) => {
 
         if (!originalUrl) {
             return { statusCode: 404, body: 'Short code not found.' };
+        }
+
+        // Revalidate URL 
+        const isValid = await validateUrl(originalUrl);
+        if(!isValid.valid){
+            // Remove invalid entry from DB
+            
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ message: 'The original URL is no longer valid: ' + (isValid.reason || 'Invalid URL format.') }),
+            };
         } 
 
         // Store in Redis Cache (fire-and-forget)

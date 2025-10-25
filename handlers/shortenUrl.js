@@ -25,10 +25,10 @@ exports.handler = async (event) => {
 
     // Validate URL
     const isValid = await validateUrl(url);
-    if (!isValid) {
+    if (!isValid.valid) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ message: 'Invalid URL format.' }),
+            body: JSON.stringify({ message: isValid.reason || 'Invalid URL format.' }),
         };
     }
 
