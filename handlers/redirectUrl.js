@@ -45,7 +45,7 @@ exports.handler = async (event) => {
         const isValid = await validateUrl(originalUrl);
         if(!isValid.valid){
             // Remove invalid entry from DB
-            
+            await deleteItem(shortCode);
             return {
                 statusCode: 400,
                 body: JSON.stringify({ message: 'The original URL is no longer valid: ' + (isValid.reason || 'Invalid URL format.') }),
