@@ -3,18 +3,19 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "sls deploy"
   },
   "keywords": [],
-  "author": "",
+  "author": "Sean Turner",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.896.0",
     "@aws-sdk/lib-dynamodb": "^3.896.0",
     "@valkey/valkey-glide": "^2.1.0",
-    "ioredis": "^5.8.0",
-    "nanoid": "^5.1.6"
+    "eslint": "^9.38.0",
+    "ioredis": "^5.8.0"
   },
   "devDependencies": {
     "serverless-offline": "^14.4.0"

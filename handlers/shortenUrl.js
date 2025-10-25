@@ -9,7 +9,7 @@ const MAX_RETRIES = 5;
 console.log('Handler module loaded');
 
 // Call but don't await yet
-let redisClientPromise = getRedisClient(); 
+let redisClientPromise = getRedisClient();
 
 exports.handler = async (event) => {
     console.log("event: ", event);
