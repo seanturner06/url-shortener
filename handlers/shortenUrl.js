@@ -2,21 +2,33 @@ const { generateShortCode } = require('../utils/generateShortCode');
 const { putItem } = require('../utils/dynamoDB');
 const { getRedisClient } = require('../utils/redisClient.js');
 const { ConditionalCheckFailedException } = require('@aws-sdk/client-dynamodb'); // Import specific error
+const { validateUrl } = require('../utils/validateUrl');
 
 const MAX_RETRIES = 5;
 
 console.log('Handler module loaded');
 
+// Call but don't await yet
 let redisClientPromise = getRedisClient(); 
 
 exports.handler = async (event) => {
-    console.log(event.body); 
+    console.log("event: ", event);
+    console.log("event body", event.body); 
     const { url } = JSON.parse(event.body || '{}');
 
     if(!url) {
         return {
             statusCode: 400,
             body: JSON.stringify({ message: 'Missing "url" in request body.' }),
+        };
+    }
+
+    // Validate URL
+    const isValid = await validateUrl(url);
+    if (!isValid) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ message: 'Invalid URL format.' }),
         };
     }
 
@@ -69,10 +81,10 @@ exports.handler = async (event) => {
             // Check that redisClient is a functional object before calling set
             if (typeof redisClient.set === 'function') {
                 console.log(`Storing in Redis: ${shortCode} -> ${url}`);
-                await redisClient.set(shortCode, url); // Set expiration to 1 day
+                await redisClient.set(shortCode, url, 'EX', 3600); // Set expiration to 1 day
                 console.log(`Redis SET operation succeeded for code: ${shortCode}`); // Log Redis set success
             } else {
-                    console.error('Redis client object is not configured correctly for SET operation.');
+                console.error('Redis client object is not configured correctly for SET operation.');
             }
         } catch (cacheError) {
             console.error('Redis cache error during SET operation:', cacheError);
