@@ -1,8 +1,16 @@
+// @ts-check
+const { URL } = require('url');
 const { isIP } = require('net');
 const dns = require('dns').promises;
 
+/**
+ * Validates a given URL to ensure it is well-formed and resolves to a public IP address.
+ * @param {string} url - The URL to validate.
+ * @returns {Promise<import("../types").ValidateUrlResult>} Validation result.
+ */
 async function validateUrl(url) {
-    let parsed; 
+    /** @type {URL} */
+    let parsed;
 
     try {
         parsed = new URL(url); 
@@ -10,6 +18,7 @@ async function validateUrl(url) {
         return { valid: false, reason: 'Invalid URL' };
     }
 
+    /** @type {string} */
     const hostName = parsed.hostname.toLowerCase(); 
 
     // Basic checks for valid protocols
@@ -29,12 +38,14 @@ async function validateUrl(url) {
         }
     } else {
         // Domain validation via DNS lookup
-        let ipv4Addresses = []; 
+        /** @type {string[]} */
+        let ipv4Addresses = [];
+        /** @type {string[]} */
         let ipv6Addresses = [];
 
         try {
             ipv4Addresses = await dns.resolve4(hostName);
-        } catch (error) {
+        } catch (/** @type {any} */ error) {
             if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') {
                 return { valid: false, reason: 'DNS resolution error' };
             }
@@ -42,7 +53,7 @@ async function validateUrl(url) {
 
         try {
             ipv6Addresses = await dns.resolve6(hostName);
-        } catch (error) {
+        } catch (/** @type {any} */ error) {
             if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') {
                 return { valid: false, reason: 'DNS resolution error' };
             }
@@ -52,8 +63,8 @@ async function validateUrl(url) {
             return { valid: false, reason: 'Domain does not resolve' };
         }
 
-        for( const ip of [...ipv4Addresses, ...ipv6Addresses]) {
-            if(!isPublicIp(ip)) {
+        for (const /** @type {string} */ ip of [...ipv4Addresses, ...ipv6Addresses]) {
+            if (!isPublicIp(ip)) {
                 return { valid: false, reason: 'Domain resolves to private IP address' };
             }
         }
@@ -62,13 +73,18 @@ async function validateUrl(url) {
     return { valid: true };
 }
 
+/**
+ * @param {string} ip
+ * @returns {boolean}
+ */
 function isPublicIp(ip) {
     if(ip.includes(':')) {
         return isPublicIpv6(ip);
     }
 
+    /** @type {number[]} */
     const parts = ip.split('.').map(Number); 
-    if(parts.length !== 4 || parts.some(p => p < 0 || p > 255)) {
+    if (parts.length !== 4 || parts.some((/** @type {number} */ p) => p < 0 || p > 255)) {
         return false;
     }
 
@@ -86,6 +102,10 @@ function isPublicIp(ip) {
     return true;
 }
 
+/**
+ * @param {string} ip
+ * @returns {boolean}
+ */
 function isPublicIpv6(ip) {
     const lower = ip.toLowerCase();
     if (lower === '::1' || lower === '::') return false;

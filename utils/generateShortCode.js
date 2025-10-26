@@ -1,3 +1,4 @@
+// @ts-check
 const crypto = require('crypto');
 
 // Base62 Alphabet (0-9, A-Z, a-z)

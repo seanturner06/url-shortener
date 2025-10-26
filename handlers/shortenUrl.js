@@ -1,16 +1,27 @@
+// @ts-check
 const { generateShortCode } = require('../utils/generateShortCode');
 const { putItem } = require('../utils/dynamoDB');
 const { getRedisClient } = require('../utils/redisClient.js');
 const { ConditionalCheckFailedException } = require('@aws-sdk/client-dynamodb'); // Import specific error
 const { validateUrl } = require('../utils/validateUrl');
-
 const MAX_RETRIES = 5;
+
+/**
+ * @typedef {import("../types").ValidateUrlResult} ValidateUrlResult
+ * @typedef {import("../types").APIGatewayEvent} APIGatewayEvent
+ * @typedef {import("../types").RedisClient} RedisClient
+ * @typedef {import("../types").RequestContext} RequestContext
+ */
 
 console.log('Handler module loaded');
 
 // Call but don't await yet
 let redisClientPromise = getRedisClient();
 
+/**
+ * @param {import("../types").APIGatewayEvent} event
+ * @returns {Promise<import("../types").HandlerResponse>}
+ */
 exports.handler = async (event) => {
     console.log("event: ", event);
     console.log("event body", event.body); 
@@ -24,6 +35,7 @@ exports.handler = async (event) => {
     }
 
     // Validate URL
+    /** @type {ValidateUrlResult} */
     const isValid = await validateUrl(url);
     if (!isValid.valid) {
         return {
@@ -33,6 +45,7 @@ exports.handler = async (event) => {
     }
 
     // 1. Initialize Redis Client
+    /** @type {RedisClient|undefined} */
     let redisClient; 
 
     // If we reach here, we have a unique shortCode and the item is stored
@@ -45,7 +58,8 @@ exports.handler = async (event) => {
     }
 
     // 2. Business Logic & Persistence with Retry Loop
-    let shortCode;
+    /** @type {string} */
+    let shortCode = ''; 
     let success = false;
     
     for (let i = 0; i < MAX_RETRIES; i++) {
@@ -93,6 +107,7 @@ exports.handler = async (event) => {
     }
 
     // 3. Success Response (using the successfully generated shortCode)
+    /** @type {RequestContext} */
     const requestContext = event.requestContext || {};
         
     // Safely access properties, providing fallbacks for local testing

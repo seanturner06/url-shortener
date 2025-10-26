@@ -1,16 +1,28 @@
+// @ts-check
 const { Redis } = require("ioredis");
 const { getSecret } = require("./secrets");
-let client;
+
+/**
+ * @typedef {import("ioredis").Redis} RedisClient
+ * @typedef {import("./secrets").SecretValue} SecretValue
+ */
+
+/** @type {RedisClient|null} */
+let client = null; 
 
 /**
  * Gets a Redis client instance.
- * @returns {Redis} Redis Client
+ * @returns {Promise<RedisClient>} Redis Client
  */
 async function getRedisClient() {
     if (!client) {
 
+        if (!process.env.REDIS_ENDPOINT_NAME) {
+            throw new Error('REDIS_ENDPOINT_NAME environment variable is not set.');
+        }
+
+        /** @type {SecretValue} */
         const secretValue = await getSecret(process.env.REDIS_ENDPOINT_NAME);
-        console.log(`Retrieved Redis endpoint from secrets: ${secretValue.REDIS_ENDPOINT}`);
 
         const redisEndpoint = secretValue.REDIS_ENDPOINT;
 

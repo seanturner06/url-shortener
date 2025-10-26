@@ -1,3 +1,4 @@
+// @ts-check
 const {
     SecretsManagerClient,
     GetSecretValueCommand,
@@ -7,12 +8,17 @@ const client = new SecretsManagerClient({
     region: process.env.AWS_REGION || 'us-east-1',
 });
 
+/**
+ * @typedef {import("../types").SecretValue} SecretValue
+ */
+
+/** @type {SecretValue|null} */
 let cachedSecret = null;
 
 /**
  * Retrieves a secret from AWS Secrets Manager.
  * @param {string} secretId - The ID of the secret to retrieve.
- * @returns {Promise<Object>} - The secret value as a JSON object.
+ * @returns {Promise<SecretValue>} - The secret value as a JSON object.
  */
 async function getSecret(secretId) {
     if (cachedSecret) return cachedSecret;
@@ -21,8 +27,15 @@ async function getSecret(secretId) {
         new GetSecretValueCommand({ SecretId: secretId })
     );
 
-    cachedSecret = JSON.parse(res.SecretString);
-    console.log(`Secret ${secretId} retrieved and cached.`);
+    if (!res.SecretString) {
+        throw new Error(`Could not find secret.`);
+    }
+
+    /** @type {SecretValue} */ 
+    cachedSecret = (JSON.parse(res.SecretString));
+    if (!cachedSecret) {
+        throw new Error('Secret is empty or invalid JSON.');
+    }
     return cachedSecret;
 }
 

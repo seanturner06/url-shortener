@@ -1,9 +1,22 @@
-const { getItem, incrementClickCount } = require('../utils/dynamoDB');
+// @ts-check
+const { validateUrl } = require('../utils/validateUrl');
+const { getItem, incrementClickCount, deleteItem } = require('../utils/dynamoDB');
 const { getRedisClient } = require('../utils/redisClient.js');
 
-exports.handler = async (event) => { 
+/**
+ * @typedef {import("../types").HandlerResponse} HandlerResponse
+ * @typedef {import("../types").ValidateUrlResult} ValidateUrlResult
+ * @typedef {import("../types").RedisClient} RedisClient
+ */
+
+/**
+ * @param {import("../types").APIGatewayEvent} event
+ * @returns {Promise<import("../types").HandlerResponse>}
+ */
+exports.handler = async (event) => {
 
     // 1. Get Short Code from Path
+    /** @type {string|null} */
     const shortCode = event.pathParameters ? event.pathParameters.shortCode : null;
 
     if (!shortCode) {
@@ -11,10 +24,12 @@ exports.handler = async (event) => {
     }
 
     // 0. Initialize Redis Client
+    /** @type {RedisClient} */
     const redisClient = await getRedisClient();
 
     // See if we have a cached URL
     try {
+        /** @type {string|null} */
         const cachedUrl = await redisClient.get(shortCode);
 
         // Cache Hit
@@ -35,6 +50,7 @@ exports.handler = async (event) => {
             };
         }
         // Cache Miss: Fetch from DynamoDB
+        /** @type {string|null} */
         const originalUrl = await getItem(shortCode);
 
         if (!originalUrl) {
@@ -42,6 +58,7 @@ exports.handler = async (event) => {
         }
 
         // Revalidate URL 
+        /** @type {ValidateUrlResult} */
         const isValid = await validateUrl(originalUrl);
         if(!isValid.valid){
             // Remove invalid entry from DB
