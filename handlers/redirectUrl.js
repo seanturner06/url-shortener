@@ -67,10 +67,10 @@ exports.handler = async (event) => {
                 statusCode: 400,
                 body: JSON.stringify({ message: 'The original URL is no longer valid: ' + (isValid.reason || 'Invalid URL format.') }),
             };
-        } 
+        }
 
         // Store in Redis Cache (fire-and-forget)
-        redisClient.set(shortCode, originalUrl, 'EX', 3600).catch(err => {
+        redisClient.set(shortCode, originalUrl, 'EX', 3600 * 24).catch(err => {
             console.error('Failed to cache URL in Redis:', err);
         });
 

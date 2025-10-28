@@ -24,8 +24,8 @@ let redisClientPromise = getRedisClient();
  */
 exports.handler = async (event) => {
     console.log("event: ", event);
-    console.log("event body", event.body); 
-    const { url } = JSON.parse(event.body || '{}');
+    console.log("event body", event.body);
+    const { url, customCode } = JSON.parse(event.body || '{}');
 
     if(!url) {
         return {
@@ -55,6 +55,57 @@ exports.handler = async (event) => {
         console.log('Connecting to Redis...');
     } catch (cacheError) {
         console.error('Redis cache error:', cacheError);
+    }
+
+    // TODO: Implement customCode handling
+    if(customCode) {
+        // TODO: Validate customCode format
+        // After validation, attempt to store it directly
+        try {
+            await putItem(customCode, url);
+            console.log(`DynamoDB write succeeded for customCode: ${customCode}`);
+        } catch (error) {
+            if (error instanceof ConditionalCheckFailedException) {
+                console.warn(`Custom code already in use: ${customCode}`);
+                return { statusCode: 409, body: JSON.stringify({ message: 'Custom code already in use.' }) };
+            } else {
+                console.error('Database write error for custom code:', error);
+                return { statusCode: 500, body: JSON.stringify({ message: 'Database error during write for custom code.' }) };
+            }
+        }
+
+        // Store in Redis Cache (After successful DynamoDB write)
+        if (redisClient) {
+            try {
+                // Check that redisClient is a functional object before calling set
+                if (typeof redisClient.set === 'function') {
+                    console.log(`Storing in Redis: ${customCode} -> ${url}`);
+                    await redisClient.set(customCode, url, 'EX', 3600); // Set expiration to 1 hour
+                    console.log(`Redis SET operation succeeded for code: ${customCode}`); // Log Redis set success
+                } else {
+                    console.error('Redis client object is not configured correctly for SET operation.');
+                }
+            } catch (cacheError) {
+                console.error('Redis cache error during SET operation for custom code:', cacheError);
+                // This is a cache failure, we proceed with success response.
+            }
+        }
+
+        /** @type {RequestContext} */
+        const requestContext = event.requestContext || {};
+            
+        // Safely access properties, providing fallbacks for local testing
+        const apiId = requestContext.apiId || process.env.API_GATEWAY_ID || 'local-api-id'; 
+        const region = process.env.AWS_REGION || 'us-east-1'; 
+        const stage = requestContext.stage || 'dev'; 
+            
+        const shortUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/${stage}/${customCode}`;
+        
+        return { 
+            statusCode: 201, 
+            body: JSON.stringify({ customCode, longUrl: url, shortUrl }),
+            headers: { 'Content-Type': 'application/json' }
+        };
     }
 
     // 2. Business Logic & Persistence with Retry Loop
